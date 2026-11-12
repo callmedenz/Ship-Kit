@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shipkit-ingress
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: shipkit.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: shipkit-service
+            port:
+              number: 8000
