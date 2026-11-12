@@ -53,10 +53,13 @@ D:\ShipKit\
 │   ├── deployment.yaml    # Kubernetes Deployment manifest with health probes
 │   ├── service.yaml       # Kubernetes Service manifest (NodePort mapping)
 │   └── ingress.yaml       # NGINX Ingress controller routing rule
-├── app\
-│   └── main.py            # FastAPI application entrypoint with /health endpoint
+├── argocd\
+│   ├── application.yaml   # ArgoCD Application manifest for GitOps sync
+│   └── monitoring.yaml    # ArgoCD-managed Prometheus & Grafana stack
+├── main.py                # FastAPI application entrypoint with /health endpoint
 ├── test_main.py           # Pytest suite utilizing TestClient and httpx
 ├── Dockerfile             # Multi-stage container build definition
+├── .dockerignore          # Docker build context exclusions
 ├── requirements.txt       # Python dependencies (FastAPI, Uvicorn, Httpx)
 └── README.md              # Project documentation
 ```
