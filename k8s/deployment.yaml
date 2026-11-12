@@ -1,39 +1,39 @@
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
-  name: portfolio-deployment
+  name: shipkit-deployment
+  namespace: default
 
 spec:
   replicas: 2
 
   selector:
     matchLabels:
-      app: portfolio
+      app: shipkit-app
 
   template:
     metadata:
       labels:
-        app: portfolio
+        app: shipkit-app
 
     spec:
       containers:
-        - name: portfolio
-          image: callmedenz/portfolio-app:acc02fb1b6e6f98d3a5363fd894ce453c2dcefd2
+        - name: app
+          image: ghcr.io/callmedenz/shipkit:latest
           ports:
-            - containerPort: 80
+            - containerPort: 8000
 
           readinessProbe:
             httpGet:
-              path: /
-              port: 80
+              path: /health
+              port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
 
           livenessProbe:
             httpGet:
-              path: /
-              port: 80
+              path: /health
+              port: 8000
             initialDelaySeconds: 10
             periodSeconds: 20
 
