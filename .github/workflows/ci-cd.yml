@@ -102,10 +102,12 @@ jobs:
       # 4. Scan Container Image with Aqua Trivy
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_CACHE_DIR: /tmp/trivy-cache
         with:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
           format: 'json'
-          output: 'trivy-results.json'
+          output: '/tmp/trivy-results.json'
           exit-code: '0' # Change to '1' later to fail builds on critical CVEs
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
@@ -115,10 +117,21 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          printf 'ShipKit security scan summary unavailable.' > ai-email.txt
+          printf '{"summary":"ShipKit security scan summary unavailable.","applied_files":[]}' > ai-summary.json
           python scripts/ai_security_fix.py \
-            --trivy-json trivy-results.json \
+            --trivy-json /tmp/trivy-results.json \
             --summary-output ai-summary.json \
             --email-output ai-email.txt
+
+      - name: Send AI security summary by Gmail
+        if: always()
+        env:
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python -c "from scripts.gmail_alert import send_gmail; send_gmail('ShipKit Security Scan', open('ai-email.txt', encoding='utf-8').read())"
 
       - name: Create pull request with AI-proposed fixes
         if: github.event_name == 'push'
@@ -129,18 +142,13 @@ jobs:
           commit-message: "chore: apply AI-proposed security fixes"
           title: "ShipKit: AI-proposed security fixes"
           body-path: ai-summary.json
+          add-paths: |
+            Dockerfile
+            requirements.txt
+            k8s/deployment.yaml
           labels: |
             automated-security
             ai-generated
-
-      - name: Send AI security summary by Gmail
-        if: always()
-        env:
-          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
-          GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: |
-          python -c "from scripts.gmail_alert import send_gmail; send_gmail('ShipKit Security Scan', open('ai-email.txt', encoding='utf-8').read())"
 
       # 5. Push Image to GHCR using Git SHA tagging
       - name: Push Docker image to GHCR

@@ -7,11 +7,6 @@ from pathlib import PurePosixPath
 
 from dotenv import load_dotenv
 
-try:
-    from .gmail_alert import send_gmail
-except ImportError:
-    from gmail_alert import send_gmail
-
 
 load_dotenv()
 
@@ -160,7 +155,6 @@ def main():
     print(summary)
     if applied:
         print("Applied AI-proposed files:", ", ".join(applied))
-    send_gmail("ShipKit Security Scan", email_message)
 
 
 if __name__ == "__main__":
