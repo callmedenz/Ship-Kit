@@ -1,0 +1,34 @@
+name: ShipKit AI Health Alert
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-health-check:
+    name: Hourly AI Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check services and send Gemini Gmail alert
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SHIPKIT_HEALTH_URL: ${{ secrets.SHIPKIT_HEALTH_URL }}
+          PROMETHEUS_HEALTH_URL: ${{ secrets.PROMETHEUS_HEALTH_URL }}
+          GRAFANA_HEALTH_URL: ${{ secrets.GRAFANA_HEALTH_URL }}
+        run: python scripts/ai_health_alert.py

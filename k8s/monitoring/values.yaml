@@ -12,6 +12,12 @@ kubelet:
     cAdvisor: true
     insecureSkipVerify: true
 
+prometheusOperator:
+  tls:
+    enabled: false
+  admissionWebhooks:
+    enabled: false
+
 prometheus:
   enabled: true
   prometheusSpec:

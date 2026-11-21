@@ -21,6 +21,9 @@ spec:
           serviceMonitor:
             cAdvisor: true
             insecureSkipVerify: true
+        prometheusOperator:
+          admissionWebhooks:
+            enabled: false
         prometheus:
           enabled: true
           prometheusSpec:

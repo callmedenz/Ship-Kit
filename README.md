@@ -74,6 +74,101 @@ D:\ShipKit\
 4. **Resilient Kubernetes Deployment:** Deploys with readiness and liveness probes targeting the `/health` endpoint on port `8000` to ensure high availability.
 5. **Seamless Traffic Management:** Handled locally through NGINX Ingress mapping to `http://shipkit.local/health`.
 
+## Gemini Security Remediation
+
+The GitHub Actions pipeline sends HIGH and CRITICAL Trivy findings to Gemini.
+Gemini may propose complete replacements for `Dockerfile`, `requirements.txt`, or
+`k8s/deployment.yaml`. The proposed edits are restricted to those files and are
+submitted as a pull request for human review; the workflow never merges them.
+
+Configure these GitHub repository secrets:
+
+- `GEMINI_API_KEY`: Gemini API key
+- `GMAIL_SENDER`: Gmail address used to send alerts
+- `GMAIL_RECIPIENT`: Email address that receives alerts
+- `GMAIL_APP_PASSWORD`: Gmail App Password
+
+The email step sends an AI-generated security summary after the scan.
+
+## Scheduled AI Health Alerts
+
+[.github/workflows/health-alert.yml](.github/workflows/health-alert.yml) runs
+every hour and asks Gemini to turn service health results into an email
+status or alert message.
+
+Configure these additional GitHub repository secrets:
+
+- `SHIPKIT_HEALTH_URL`: Public `https://.../health` URL
+- `PROMETHEUS_HEALTH_URL`: Public Prometheus `/-/ready` URL
+- `GRAFANA_HEALTH_URL`: Public Grafana `/api/health` URL
+
+The workflow also has a manual **Run workflow** button. Services whose URLs
+are not configured are reported as not configured; they are not considered
+successful health checks.
+
+## Local `.env` Configuration
+
+Copy `.env.example` to `.env`, fill in the Gemini key and Gmail credentials,
+and run the local scripts:
+
+```powershell
+python -m pip install -r requirements.txt
+python scripts/ai_health_alert.py
+```
+
+The `.env` file is ignored by Git. Keep real API keys and email credentials out
+of `.env.example`, source code, commits, screenshots, and chat logs.
+
+## Testing AI Health Alerts
+
+With ShipKit, Prometheus, and Grafana running, execute:
+
+```powershell
+python scripts/ai_health_alert.py
+```
+
+The script returns `healthy` or `broken` for each service and asks Gemini to
+create a short operations message. It then sends that message through Gmail.
+Missing Gmail configuration is reported without stopping the health check.
+
+To test a failure without changing application code:
+
+```powershell
+$env:SHIPKIT_HEALTH_URL = "http://localhost:7999/health"
+python scripts/ai_health_alert.py
+```
+
+The ShipKit result should be `broken` and Gemini should begin the alert with
+`ALERT:`. Restore the working value after the test:
+
+```powershell
+$env:SHIPKIT_HEALTH_URL = "http://localhost:8000/health"
+python scripts/ai_health_alert.py
+```
+
+## Testing AI Security Remediation
+
+Build and scan the local Docker image:
+
+```powershell
+docker build -t shipkit-local .
+trivy image --format json --output trivy-local.json --ignore-unfixed --severity CRITICAL,HIGH shipkit-local
+```
+
+Send the findings to Gemini:
+
+```powershell
+python scripts/ai_security_fix.py `
+  --trivy-json trivy-local.json `
+  --summary-output ai-summary.json `
+  --email-output ai-email.txt
+```
+
+Gemini can propose complete replacements only for `Dockerfile`,
+`requirements.txt`, and `k8s/deployment.yaml`. The script applies only paths
+listed in that allowlist. Review every change with `git diff` and run tests
+before accepting or committing it.
+
 ---
 
 ## 🚀 Quick Start & Verification

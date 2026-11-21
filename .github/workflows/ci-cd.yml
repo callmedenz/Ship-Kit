@@ -51,8 +51,9 @@ jobs:
     needs: validate-and-test
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
+      pull-requests: write
       security-events: write
 
     steps:
@@ -94,10 +95,43 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}'
-          format: 'table'
+          format: 'json'
+          output: 'trivy-results.json'
           exit-code: '0' # Change to '1' later to fail builds on critical CVEs
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
+
+      - name: Ask Gemini to propose security fixes
+        id: ai-fix
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/ai_security_fix.py \
+            --trivy-json trivy-results.json \
+            --summary-output ai-summary.json \
+            --email-output ai-email.txt
+
+      - name: Create pull request with AI-proposed fixes
+        if: github.event_name == 'push'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ai/security-fixes-${{ github.sha }}
+          commit-message: "chore: apply AI-proposed security fixes"
+          title: "ShipKit: AI-proposed security fixes"
+          body-path: ai-summary.json
+          labels: |
+            automated-security
+            ai-generated
+
+      - name: Send AI security summary by Gmail
+        if: always()
+        env:
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_RECIPIENT: ${{ secrets.GMAIL_RECIPIENT }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python -c "from scripts.gmail_alert import send_gmail; send_gmail('ShipKit Security Scan', open('ai-email.txt', encoding='utf-8').read())"
 
       # 5. Push Image to GHCR using Git SHA tagging
       - name: Push Docker image to GHCR
